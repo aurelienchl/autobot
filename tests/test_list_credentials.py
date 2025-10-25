@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
@@ -22,10 +23,11 @@ def test_list_credentials_returns_saved_metadata():
         main_module.credential_repository = original_repo
 
     assert response.status_code == 200
+    expected_fingerprint = hashlib.sha256("sk_test_dummy".encode("utf-8")).hexdigest()
     assert response.json() == {
         "credentials": [
             {
-                "stripe_secret_key": "sk_test_dummy",
+                "stripe_secret_key": expected_fingerprint,
                 "created_at": "2024-01-01T00:00:00+00:00",
                 "last_ingested_at": "2024-01-01T00:00:00+00:00",
             }

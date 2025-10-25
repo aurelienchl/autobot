@@ -1,3 +1,4 @@
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional
@@ -5,7 +6,7 @@ from typing import Callable, Dict, List, Optional
 
 @dataclass
 class StoredStripeCredential:
-    """DTO representing a saved Stripe credential."""
+    """DTO representing a saved Stripe credential fingerprint and metadata."""
 
     stripe_secret_key: str
     created_at: datetime
@@ -32,14 +33,20 @@ class StripeCredentialRepository:
 
     def save_stripe_secret_key(self, stripe_secret_key: str) -> None:
         now = self._clock()
-        existing = self._credentials.get(stripe_secret_key)
+        fingerprint = self._fingerprint(stripe_secret_key)
+        existing = self._credentials.get(fingerprint)
         if existing is None:
-            self._credentials[stripe_secret_key] = StoredStripeCredential.new(
-                stripe_secret_key=stripe_secret_key,
+            self._credentials[fingerprint] = StoredStripeCredential.new(
+                stripe_secret_key=fingerprint,
                 now=now,
             )
         else:
             existing.touch(now)
+
+    @staticmethod
+    def _fingerprint(stripe_secret_key: str) -> str:
+        """Returns a deterministic fingerprint so we avoid storing raw secrets."""
+        return hashlib.sha256(stripe_secret_key.encode("utf-8")).hexdigest()
 
     def list_credentials(self) -> List[StoredStripeCredential]:
         return [

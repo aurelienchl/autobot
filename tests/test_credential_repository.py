@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 from itertools import chain, repeat
 
@@ -13,7 +14,8 @@ def test_list_credentials_returns_copy_with_timestamp():
 
     assert len(credentials) == 1
     stored = credentials[0]
-    assert stored.stripe_secret_key == "sk_test_example"
+    expected_fingerprint = hashlib.sha256("sk_test_example".encode("utf-8")).hexdigest()
+    assert stored.stripe_secret_key == expected_fingerprint
     assert isinstance(stored.created_at, datetime)
     assert stored.created_at.tzinfo == timezone.utc
     assert stored.last_ingested_at == stored.created_at
