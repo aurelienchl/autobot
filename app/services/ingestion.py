@@ -73,6 +73,15 @@ class StripeSubscriptionSnapshotRepository:
             for key, value in snapshot.items()
         }
 
+    def list_snapshots(self) -> Dict[str, Dict[str, List]]:
+        return {
+            key: {
+                inner_key: list(inner_value) if isinstance(inner_value, list) else inner_value
+                for inner_key, inner_value in snapshot.items()
+            }
+            for key, snapshot in self._snapshots.items()
+        }
+
 
 class IngestionService:
     """Business logic for processing Stripe ingestion requests."""
