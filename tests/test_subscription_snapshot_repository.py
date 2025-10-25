@@ -1,3 +1,5 @@
+import hashlib
+
 from app.services.ingestion import StripeSubscriptionSnapshotRepository
 
 
@@ -41,29 +43,32 @@ def test_list_snapshots_returns_copies_per_key():
 
     snapshots = repo.list_snapshots()
 
+    first_fingerprint = hashlib.sha256("sk_test_first".encode("utf-8")).hexdigest()
+    second_fingerprint = hashlib.sha256("sk_test_second".encode("utf-8")).hexdigest()
+
     assert snapshots == {
-        "sk_test_first": {
+        first_fingerprint: {
             "customers": ["cust_1"],
             "subscriptions": ["sub_1"],
         },
-        "sk_test_second": {
+        second_fingerprint: {
             "customers": ["cust_2"],
             "subscriptions": ["sub_2"],
         },
     }
 
-    snapshots["sk_test_first"]["customers"].append("cust_mutated")
+    snapshots[first_fingerprint]["customers"].append("cust_mutated")
 
     assert repo.get_snapshot("sk_test_first") == {
         "customers": ["cust_1"],
         "subscriptions": ["sub_1"],
     }
     assert repo.list_snapshots() == {
-        "sk_test_first": {
+        first_fingerprint: {
             "customers": ["cust_1"],
             "subscriptions": ["sub_1"],
         },
-        "sk_test_second": {
+        second_fingerprint: {
             "customers": ["cust_2"],
             "subscriptions": ["sub_2"],
         },

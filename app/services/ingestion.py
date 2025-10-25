@@ -92,13 +92,15 @@ class StripeSubscriptionSnapshotRepository:
         self._snapshots: Dict[str, Dict[str, List]] = {}
 
     def save_snapshot(self, stripe_secret_key: str, snapshot: Dict[str, List]) -> None:
-        self._snapshots[stripe_secret_key] = {
+        fingerprint = StripeCredentialRepository._fingerprint(stripe_secret_key)
+        self._snapshots[fingerprint] = {
             key: list(value) if isinstance(value, list) else value
             for key, value in snapshot.items()
         }
 
     def get_snapshot(self, stripe_secret_key: str) -> Optional[Dict[str, List]]:
-        snapshot = self._snapshots.get(stripe_secret_key)
+        fingerprint = StripeCredentialRepository._fingerprint(stripe_secret_key)
+        snapshot = self._snapshots.get(fingerprint)
         if snapshot is None:
             return None
         return {
