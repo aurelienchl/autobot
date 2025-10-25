@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from app.services.ingestion import StripeCredentialRepository
-from app.services.slack import StoredSlackWebhook
+from app.services.slack import SlackDeliveryError, StoredSlackWebhook
 from app.services.slack_delivery import SlackDigestDeliveryService
 
 
@@ -33,6 +33,16 @@ class RecordingSlackClient:
     def post_message(self, webhook_url, payload):
         self.calls.append((webhook_url, payload))
         return self.response
+
+
+class FailingSlackClient:
+    def __init__(self, error):
+        self.error = error
+        self.calls = []
+
+    def post_message(self, webhook_url, payload):
+        self.calls.append((webhook_url, payload))
+        raise self.error
 
 
 class RecordingWebhookRepository:
@@ -114,4 +124,47 @@ def test_deliver_digest_short_circuits_when_webhook_missing():
     assert digest_service.calls == []
     assert formatter.calls == []
     assert slack_client.calls == []
+    assert webhook_repository.keys == [stripe_secret_key]
+
+
+def test_deliver_digest_handles_slack_delivery_errors():
+    stripe_secret_key = "sk_test_failure"
+    fingerprint = StripeCredentialRepository._fingerprint(stripe_secret_key)
+    now = datetime(2024, 2, 2, tzinfo=timezone.utc)
+    webhook = StoredSlackWebhook.new(
+        fingerprint=fingerprint,
+        webhook_url="https://hooks.slack.com/services/failure",
+        now=now,
+    )
+
+    digest_payload = {"digest": "payload"}
+    formatter_payload = {"text": "summary"}
+
+    digest_service = RecordingDigestService(digest_payload)
+    formatter = RecordingFormatter(formatter_payload)
+    failing_client = FailingSlackClient(SlackDeliveryError("Slack rejected the payload"))
+    webhook_repository = RecordingWebhookRepository(webhook)
+
+    service = SlackDigestDeliveryService(
+        digest_service=digest_service,
+        webhook_repository=webhook_repository,
+        slack_client=failing_client,
+        formatter=formatter,
+    )
+
+    result = service.deliver_digest(stripe_secret_key=stripe_secret_key, window_days=4)
+
+    assert result == {
+        "ok": False,
+        "stripe_credential_fingerprint": fingerprint,
+        "reason": "slack_delivery_failed",
+        "digest": digest_payload,
+        "slack_payload": formatter_payload,
+        "error": "Slack rejected the payload",
+    }
+    assert digest_service.calls == [(stripe_secret_key, 4)]
+    assert formatter.calls == [digest_payload]
+    assert failing_client.calls == [
+        ("https://hooks.slack.com/services/failure", formatter_payload)
+    ]
     assert webhook_repository.keys == [stripe_secret_key]

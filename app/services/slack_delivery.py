@@ -4,7 +4,11 @@ from typing import Any, Dict, Optional
 
 from app.services.digest import RenewalDigestService
 from app.services.ingestion import StripeCredentialRepository
-from app.services.slack import SlackWebhookClient, SlackWebhookRepository
+from app.services.slack import (
+    SlackDeliveryError,
+    SlackWebhookClient,
+    SlackWebhookRepository,
+)
 from app.services.slack_digest import SlackDigestFormatter
 
 
@@ -39,7 +43,17 @@ class SlackDigestDeliveryService:
             window_days=window_days,
         )
         payload = self._formatter.format_digest(digest)
-        slack_response = self._slack_client.post_message(webhook.webhook_url, payload)
+        try:
+            slack_response = self._slack_client.post_message(webhook.webhook_url, payload)
+        except SlackDeliveryError as exc:
+            return {
+                "ok": False,
+                "stripe_credential_fingerprint": webhook.stripe_credential_fingerprint,
+                "reason": "slack_delivery_failed",
+                "digest": digest,
+                "slack_payload": payload,
+                "error": str(exc),
+            }
 
         return {
             "ok": True,
