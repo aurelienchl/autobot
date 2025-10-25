@@ -69,15 +69,36 @@ class SlackDigestFormatter:
                 self._coerce_float(subscription.get("amount_due"), default=None)
             )
 
-            lines.append(
-                f"- `{subscription_id}` | {status} | renews {period_end} | {amount_text}"
-            )
+            line = f"- `{subscription_id}` | {status} | renews {period_end} | {amount_text}"
+            subscription_link = self._build_subscription_link(subscription)
+            if subscription_link:
+                line += f" | {subscription_link}"
+
+            lines.append(line)
 
         remaining = len(subscriptions) - max_lines
         if remaining > 0:
             lines.append(f"- ...and {remaining} more subscription{'s' if remaining != 1 else ''}")
 
         return lines
+
+    @staticmethod
+    def _build_subscription_link(subscription: Dict[str, Any]) -> str | None:
+        subscription_id = subscription.get("id")
+        if subscription_id is None:
+            return None
+
+        if isinstance(subscription_id, str):
+            subscription_id_str = subscription_id.strip()
+        else:
+            subscription_id_str = str(subscription_id).strip()
+
+        if not subscription_id_str:
+            return None
+
+        return (
+            f"<https://dashboard.stripe.com/subscriptions/{subscription_id_str}|View in Stripe>"
+        )
 
     @staticmethod
     def _as_string(value: Any, *, fallback: str) -> str:
