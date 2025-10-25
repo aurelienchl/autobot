@@ -6,14 +6,21 @@ from app.services.ingestion import (
     StripeCredentialRepository,
     StripeSubscriptionSnapshotRepository,
 )
+from app.services.slack import SlackWebhookRepository
 
 # --- request models ---
 class IngestRequest(BaseModel):
     stripe_secret_key: str
 
+
+class ConfigureSlackWebhookRequest(BaseModel):
+    stripe_secret_key: str
+    webhook_url: str
+
 # --- DI / service stub ---
 credential_repository = StripeCredentialRepository()
 snapshot_repository = StripeSubscriptionSnapshotRepository()
+slack_webhook_repository = SlackWebhookRepository()
 
 
 def get_ingestion_service():
@@ -28,6 +35,15 @@ app = FastAPI()
 @app.post("/ingest")
 def ingest(req: IngestRequest, svc: IngestionService = Depends(get_ingestion_service)):
     return svc.ingest(stripe_secret_key=req.stripe_secret_key)
+
+
+@app.post("/slack/webhook")
+def configure_slack_webhook(req: ConfigureSlackWebhookRequest):
+    slack_webhook_repository.configure_webhook(
+        stripe_secret_key=req.stripe_secret_key,
+        webhook_url=req.webhook_url,
+    )
+    return {"ok": True}
 
 
 @app.get("/snapshots/{stripe_secret_key}")
