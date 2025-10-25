@@ -46,6 +46,15 @@ class StripeSubscriptionSnapshotRepository:
             for key, value in snapshot.items()
         }
 
+    def get_snapshot(self, stripe_secret_key: str) -> Optional[Dict[str, List]]:
+        snapshot = self._snapshots.get(stripe_secret_key)
+        if snapshot is None:
+            return None
+        return {
+            key: list(value) if isinstance(value, list) else value
+            for key, value in snapshot.items()
+        }
+
 
 class IngestionService:
     """Business logic for processing Stripe ingestion requests."""
