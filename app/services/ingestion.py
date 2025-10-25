@@ -1,29 +1,55 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Dict, Optional
+from typing import Callable, Dict, List, Optional
 
 
-@dataclass(frozen=True)
+@dataclass
 class StoredStripeCredential:
     """DTO representing a saved Stripe credential."""
 
     stripe_secret_key: str
-    created_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    created_at: datetime
+    last_ingested_at: datetime
+
+    @classmethod
+    def new(cls, stripe_secret_key: str, now: datetime) -> "StoredStripeCredential":
+        return cls(
+            stripe_secret_key=stripe_secret_key,
+            created_at=now,
+            last_ingested_at=now,
+        )
+
+    def touch(self, now: datetime) -> None:
+        self.last_ingested_at = now
 
 
 class StripeCredentialRepository:
     """Temporary in-memory storage for Stripe credentials until persistent storage is wired up."""
 
-    def __init__(self) -> None:
-        self._credentials: List[StoredStripeCredential] = []
+    def __init__(self, clock: Optional[Callable[[], datetime]] = None) -> None:
+        self._clock = clock or (lambda: datetime.now(tz=timezone.utc))
+        self._credentials: Dict[str, StoredStripeCredential] = {}
 
     def save_stripe_secret_key(self, stripe_secret_key: str) -> None:
-        self._credentials.append(
-            StoredStripeCredential(stripe_secret_key=stripe_secret_key)
-        )
+        now = self._clock()
+        existing = self._credentials.get(stripe_secret_key)
+        if existing is None:
+            self._credentials[stripe_secret_key] = StoredStripeCredential.new(
+                stripe_secret_key=stripe_secret_key,
+                now=now,
+            )
+        else:
+            existing.touch(now)
 
     def list_credentials(self) -> List[StoredStripeCredential]:
-        return list(self._credentials)
+        return [
+            StoredStripeCredential(
+                stripe_secret_key=credential.stripe_secret_key,
+                created_at=credential.created_at,
+                last_ingested_at=credential.last_ingested_at,
+            )
+            for credential in self._credentials.values()
+        ]
 
 
 class StripeAPIClient:
