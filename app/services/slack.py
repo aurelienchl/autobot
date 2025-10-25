@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
+
+import httpx
 
 from app.services.ingestion import StripeCredentialRepository
 
@@ -75,3 +77,43 @@ class SlackWebhookRepository:
             )
             for webhook in self._webhooks.values()
         ]
+
+
+class SlackDeliveryError(Exception):
+    """Raised when Slack webhook delivery fails."""
+
+
+class SlackWebhookClient:
+    """Send Slack messages via incoming webhook URLs."""
+
+    def __init__(
+        self,
+        client: Optional[httpx.Client] = None,
+        timeout: float = 5.0,
+    ) -> None:
+        self._client = client
+        self._timeout = timeout
+
+    def post_message(self, webhook_url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        response = self._send(webhook_url, payload)
+        if response.status_code >= 400:
+            raise SlackDeliveryError(
+                f"Slack webhook returned {response.status_code}: {response.text}"
+            )
+        return {
+            "status_code": response.status_code,
+            "body": self._parse_body(response),
+        }
+
+    def _send(self, webhook_url: str, payload: Dict[str, Any]) -> httpx.Response:
+        if self._client is not None:
+            return self._client.post(webhook_url, json=payload, timeout=self._timeout)
+        with httpx.Client(timeout=self._timeout) as client:
+            return client.post(webhook_url, json=payload)
+
+    @staticmethod
+    def _parse_body(response: httpx.Response) -> Any:
+        try:
+            return response.json()
+        except ValueError:
+            return response.text

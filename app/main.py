@@ -7,7 +7,9 @@ from app.services.ingestion import (
     StripeCredentialRepository,
     StripeSubscriptionSnapshotRepository,
 )
-from app.services.slack import SlackWebhookRepository
+from app.services.slack import SlackWebhookClient, SlackWebhookRepository
+from app.services.slack_delivery import SlackDigestDeliveryService
+from app.services.slack_digest import SlackDigestFormatter
 
 # --- request models ---
 class IngestRequest(BaseModel):
@@ -18,10 +20,17 @@ class ConfigureSlackWebhookRequest(BaseModel):
     stripe_secret_key: str
     webhook_url: str
 
+
+class DeliverSlackDigestRequest(BaseModel):
+    stripe_secret_key: str
+    window_days: int = 7
+
 # --- DI / service stub ---
 credential_repository = StripeCredentialRepository()
 snapshot_repository = StripeSubscriptionSnapshotRepository()
 slack_webhook_repository = SlackWebhookRepository()
+slack_webhook_client = SlackWebhookClient()
+slack_digest_formatter = SlackDigestFormatter()
 
 
 def get_ingestion_service():
@@ -34,6 +43,15 @@ def get_ingestion_service():
 def get_digest_service():
     return RenewalDigestService(
         snapshot_repository=snapshot_repository,
+    )
+
+
+def get_slack_digest_delivery_service():
+    return SlackDigestDeliveryService(
+        digest_service=get_digest_service(),
+        webhook_repository=slack_webhook_repository,
+        slack_client=slack_webhook_client,
+        formatter=slack_digest_formatter,
     )
 
 app = FastAPI()
@@ -105,3 +123,14 @@ def list_credentials():
             for credential in credentials
         ]
     }
+
+
+@app.post("/slack/digest")
+def deliver_slack_digest(
+    req: DeliverSlackDigestRequest,
+    svc: SlackDigestDeliveryService = Depends(get_slack_digest_delivery_service),
+):
+    return svc.deliver_digest(
+        stripe_secret_key=req.stripe_secret_key,
+        window_days=req.window_days,
+    )
