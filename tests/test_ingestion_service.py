@@ -2,6 +2,7 @@ from app.services.ingestion import (
     IngestionService,
     StripeCredentialRepository,
     StripeSubscriptionSnapshotFetcher,
+    StripeSubscriptionSnapshotRepository,
 )
 
 
@@ -24,10 +25,25 @@ class RecordingFetcher(StripeSubscriptionSnapshotFetcher):
         return {"customers": ["cust_123"], "subscriptions": ["sub_123"]}
 
 
+class RecordingSnapshotRepository(StripeSubscriptionSnapshotRepository):
+    def __init__(self):
+        super().__init__()
+        self.saved_snapshots = []
+
+    def save_snapshot(self, stripe_secret_key: str, snapshot):
+        super().save_snapshot(stripe_secret_key, snapshot)
+        self.saved_snapshots.append((stripe_secret_key, snapshot))
+
+
 def test_ingest_persists_stripe_secret_key():
     repo = RecordingRepository()
     fetcher = RecordingFetcher()
-    service = IngestionService(credential_repository=repo, metadata_fetcher=fetcher)
+    snapshot_repo = RecordingSnapshotRepository()
+    service = IngestionService(
+        credential_repository=repo,
+        metadata_fetcher=fetcher,
+        metadata_repository=snapshot_repo,
+    )
 
     response = service.ingest("sk_test_example")
 
@@ -37,3 +53,6 @@ def test_ingest_persists_stripe_secret_key():
     }
     assert repo.saved_keys == ["sk_test_example"]
     assert fetcher.received_keys == ["sk_test_example"]
+    assert snapshot_repo.saved_snapshots == [
+        ("sk_test_example", {"customers": ["cust_123"], "subscriptions": ["sub_123"]})
+    ]
