@@ -1,14 +1,18 @@
-from fastapi import FastAPI, status
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 
+# --- request models ---
+class IngestRequest(BaseModel):
+    stripe_secret_key: str
+
+# --- DI / service stub ---
+def get_ingestion_service():
+    # replace with real implementation later
+    return object()
 
 app = FastAPI()
 
-
-class IngestRequest(BaseModel):
-    stripe_api_key: str
-
-
-@app.post("/ingest", status_code=status.HTTP_202_ACCEPTED)
-def ingest_credentials(payload: IngestRequest) -> dict[str, bool]:
-    return {"received": True}
+@app.post("/ingest")
+def ingest(req: IngestRequest, svc=Depends(get_ingestion_service)):
+    # basic smoke-return so tests can import and hit the route
+    return {"ok": True}
