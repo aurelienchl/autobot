@@ -26,12 +26,30 @@ class StripeCredentialRepository:
         return list(self._credentials)
 
 
+class StripeAPIClient:
+    """Placeholder Stripe API client that will eventually call Stripe's SDK."""
+
+    def fetch_customer_and_subscription_data(
+        self, stripe_secret_key: str
+    ) -> Dict[str, List]:
+        # TODO: replace with real Stripe client call
+        return {"customers": [], "subscriptions": []}
+
+
 class StripeSubscriptionSnapshotFetcher:
     """Placeholder Stripe integration that will eventually pull customer/subscription metadata."""
 
+    def __init__(self, client: Optional[StripeAPIClient] = None) -> None:
+        self._client = client or StripeAPIClient()
+
     def fetch_subscription_snapshot(self, stripe_secret_key: str) -> Dict[str, List]:
-        # TODO: replace with real Stripe client call
-        return {"customers": [], "subscriptions": []}
+        raw_snapshot = (
+            self._client.fetch_customer_and_subscription_data(stripe_secret_key) or {}
+        )
+
+        customers = list(raw_snapshot.get("customers", []))
+        subscriptions = list(raw_snapshot.get("subscriptions", []))
+        return {"customers": customers, "subscriptions": subscriptions}
 
 
 class StripeSubscriptionSnapshotRepository:
