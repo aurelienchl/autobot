@@ -39,3 +39,18 @@ def get_snapshot(stripe_secret_key: str):
         "stripe_secret_key": stripe_secret_key,
         "subscription_snapshot": snapshot,
     }
+
+
+@app.get("/credentials")
+def list_credentials():
+    credentials = credential_repository.list_credentials()
+    return {
+        "credentials": [
+            {
+                "stripe_secret_key": credential.stripe_secret_key,
+                "created_at": credential.created_at.isoformat(),
+                "last_ingested_at": credential.last_ingested_at.isoformat(),
+            }
+            for credential in credentials
+        ]
+    }
