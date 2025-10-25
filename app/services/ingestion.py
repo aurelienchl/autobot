@@ -1,14 +1,29 @@
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import List, Dict, Optional
+
+
+@dataclass(frozen=True)
+class StoredStripeCredential:
+    """DTO representing a saved Stripe credential."""
+
+    stripe_secret_key: str
+    created_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
 
 
 class StripeCredentialRepository:
     """Temporary in-memory storage for Stripe credentials until persistent storage is wired up."""
 
     def __init__(self) -> None:
-        self._keys: List[str] = []
+        self._credentials: List[StoredStripeCredential] = []
 
     def save_stripe_secret_key(self, stripe_secret_key: str) -> None:
-        self._keys.append(stripe_secret_key)
+        self._credentials.append(
+            StoredStripeCredential(stripe_secret_key=stripe_secret_key)
+        )
+
+    def list_credentials(self) -> List[StoredStripeCredential]:
+        return list(self._credentials)
 
 
 class StripeSubscriptionSnapshotFetcher:
