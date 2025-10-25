@@ -1,0 +1,17 @@
+name: Daily Report
+on:
+  schedule: [{ cron: '0 1 * * *' }]  # 6pm PT daily (GitHub uses UTC)
+  workflow_dispatch: {}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install pyyaml requests
+      - name: Generate + Post
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python agent/reports/daily_report.py
