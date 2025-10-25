@@ -1,7 +1,11 @@
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 
-from app.services.ingestion import IngestionService, StripeCredentialRepository
+from app.services.ingestion import (
+    IngestionService,
+    StripeCredentialRepository,
+    StripeSubscriptionSnapshotRepository,
+)
 
 # --- request models ---
 class IngestRequest(BaseModel):
@@ -9,10 +13,14 @@ class IngestRequest(BaseModel):
 
 # --- DI / service stub ---
 credential_repository = StripeCredentialRepository()
+snapshot_repository = StripeSubscriptionSnapshotRepository()
 
 
 def get_ingestion_service():
-    return IngestionService(credential_repository=credential_repository)
+    return IngestionService(
+        credential_repository=credential_repository,
+        snapshot_repository=snapshot_repository,
+    )
 
 app = FastAPI()
 
