@@ -46,7 +46,9 @@ def test_format_digest_builds_slack_payload():
         "*3* upcoming subscriptions in the next 7 days | Projected total: $12,345.67"
     )
     assert blocks[1]["text"]["text"] == (
-        "- `sub_001` | active | renews 2024-06-01T00:00:00+00:00 | $4,999.00\n"
-        "- `sub_002` | past_due | renews 2024-06-02T00:00:00+00:00 | $1,500.50\n"
+        "- `sub_001` | active | renews 2024-06-01T00:00:00+00:00 | $4,999.00 | "
+        "<https://dashboard.stripe.com/subscriptions/sub_001|View in Stripe>\n"
+        "- `sub_002` | past_due | renews 2024-06-02T00:00:00+00:00 | $1,500.50 | "
+        "<https://dashboard.stripe.com/subscriptions/sub_002|View in Stripe>\n"
         "- ...and 1 more subscription"
     )
