@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.services.digest import RenewalDigestService
 from app.services.ingestion import (
     IngestionService,
     StripeCredentialRepository,
@@ -26,6 +27,12 @@ slack_webhook_repository = SlackWebhookRepository()
 def get_ingestion_service():
     return IngestionService(
         credential_repository=credential_repository,
+        snapshot_repository=snapshot_repository,
+    )
+
+
+def get_digest_service():
+    return RenewalDigestService(
         snapshot_repository=snapshot_repository,
     )
 
@@ -71,6 +78,18 @@ def get_snapshot(stripe_secret_key: str):
         "stripe_secret_key": stripe_secret_key,
         "subscription_snapshot": snapshot,
     }
+
+
+@app.get("/digest/{stripe_secret_key}")
+def get_digest(
+    stripe_secret_key: str,
+    window_days: int = 7,
+    svc: RenewalDigestService = Depends(get_digest_service),
+):
+    return svc.build_digest(
+        stripe_secret_key=stripe_secret_key,
+        window_days=window_days,
+    )
 
 
 @app.get("/credentials")
