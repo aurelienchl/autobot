@@ -1,0 +1,4 @@
+# test-only deps
+pytest
+httpx
+pytest-asyncio
