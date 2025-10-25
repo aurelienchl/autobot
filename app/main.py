@@ -1,15 +1,18 @@
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 
-from app.services.ingestion import IngestionService
+from app.services.ingestion import IngestionService, StripeCredentialRepository
 
 # --- request models ---
 class IngestRequest(BaseModel):
     stripe_secret_key: str
 
 # --- DI / service stub ---
+credential_repository = StripeCredentialRepository()
+
+
 def get_ingestion_service():
-    return IngestionService()
+    return IngestionService(credential_repository=credential_repository)
 
 app = FastAPI()
 
