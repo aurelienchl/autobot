@@ -56,3 +56,31 @@ def test_ingest_persists_stripe_secret_key():
     assert snapshot_repo.saved == [
         ("sk_test_example", {"customers": ["cust_123"], "subscriptions": ["sub_123"]})
     ]
+
+
+class RecordingStripeClient:
+    def __init__(self):
+        self.keys = []
+        self.payload = {
+            "customers": ["cust_abc"],
+            "subscriptions": ["sub_abc"],
+        }
+
+    def fetch_customer_and_subscription_data(self, stripe_secret_key: str):
+        self.keys.append(stripe_secret_key)
+        return self.payload
+
+
+def test_snapshot_fetcher_delegates_to_client_and_copies_payload():
+    client = RecordingStripeClient()
+    fetcher = StripeSubscriptionSnapshotFetcher(client=client)
+
+    snapshot = fetcher.fetch_subscription_snapshot("sk_test_key")
+
+    assert client.keys == ["sk_test_key"]
+    assert snapshot == client.payload
+    assert snapshot["customers"] is not client.payload["customers"]
+    assert snapshot["subscriptions"] is not client.payload["subscriptions"]
+
+    snapshot["customers"].append("cust_mutated")
+    assert client.payload["customers"] == ["cust_abc"]
