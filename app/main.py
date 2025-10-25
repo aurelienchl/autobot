@@ -46,6 +46,22 @@ def configure_slack_webhook(req: ConfigureSlackWebhookRequest):
     return {"ok": True}
 
 
+@app.get("/slack/webhook/{stripe_secret_key}")
+def get_slack_webhook(stripe_secret_key: str):
+    stored = slack_webhook_repository.get_webhook(stripe_secret_key)
+    if stored is None:
+        raise HTTPException(status_code=404, detail="Slack webhook not found")
+    return {
+        "stripe_secret_key": stripe_secret_key,
+        "webhook": {
+            "stripe_credential_fingerprint": stored.stripe_credential_fingerprint,
+            "webhook_url": stored.webhook_url,
+            "created_at": stored.created_at.isoformat(),
+            "last_configured_at": stored.last_configured_at.isoformat(),
+        },
+    }
+
+
 @app.get("/snapshots/{stripe_secret_key}")
 def get_snapshot(stripe_secret_key: str):
     snapshot = snapshot_repository.get_snapshot(stripe_secret_key)
