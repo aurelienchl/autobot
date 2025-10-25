@@ -1,7 +1,9 @@
 import re
 
-from fastapi import FastAPI, Depends
+from fastapi import Depends, FastAPI
 from pydantic import BaseModel, field_validator
+
+from app.services.ingestion import IngestionService
 
 STRIPE_SECRET_KEY_PATTERN = re.compile(r"^sk_(live|test)_[A-Za-z0-9]{16,}$")
 
@@ -18,13 +20,12 @@ class IngestRequest(BaseModel):
         return cleaned
 
 # --- DI / service stub ---
-def get_ingestion_service():
-    # replace with real implementation later
-    return object()
+def get_ingestion_service() -> IngestionService:
+    return IngestionService()
 
 app = FastAPI()
 
 @app.post("/ingest")
-def ingest(req: IngestRequest, svc=Depends(get_ingestion_service)):
-    # basic smoke-return so tests can import and hit the route
+def ingest(req: IngestRequest, svc: IngestionService = Depends(get_ingestion_service)):
+    svc.record_stripe_secret(req.stripe_secret_key)
     return {"ok": True}
