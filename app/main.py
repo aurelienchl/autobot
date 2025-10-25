@@ -3,7 +3,7 @@ import re
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel, field_validator
 
-from app.services.ingestion import IngestionService
+from app.services.ingestion import IngestionService, InMemoryStripeSecretRepository
 
 STRIPE_SECRET_KEY_PATTERN = re.compile(r"^sk_(live|test)_[A-Za-z0-9]{16,}$")
 
@@ -21,7 +21,7 @@ class IngestRequest(BaseModel):
 
 # --- DI / service stub ---
 def get_ingestion_service() -> IngestionService:
-    return IngestionService()
+    return IngestionService(InMemoryStripeSecretRepository())
 
 app = FastAPI()
 
