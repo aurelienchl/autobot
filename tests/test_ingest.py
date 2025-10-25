@@ -9,7 +9,10 @@ class DummyIngestionService:
 
     def ingest(self, stripe_secret_key: str):
         self.called_with = stripe_secret_key
-        return {"ok": True}
+        return {
+            "ok": True,
+            "subscription_snapshot": {"customers": [], "subscriptions": []},
+        }
 
 
 def test_ingest_route_calls_service():
@@ -23,5 +26,8 @@ def test_ingest_route_calls_service():
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert response.json() == {"ok": True}
+    assert response.json() == {
+        "ok": True,
+        "subscription_snapshot": {"customers": [], "subscriptions": []},
+    }
     assert dummy_service.called_with == "sk_test_123"
